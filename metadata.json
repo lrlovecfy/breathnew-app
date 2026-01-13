@@ -1,0 +1,7 @@
+{
+  "name": "BreathNew - AI Quit Smoking Companion",
+  "description": "A comprehensive stop-smoking aid featuring an AI coach powered by Gemini, health recovery tracking, financial savings calculator, and craving management tools.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

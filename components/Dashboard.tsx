@@ -1,0 +1,155 @@
+import React, { useEffect, useState } from 'react';
+import { UserProfile, Language } from '../types';
+import { Leaf, DollarSign, Activity, Wind, Crown, ArrowRight, Calendar, Timer } from 'lucide-react';
+import { TRANSLATIONS } from '../translations';
+import DailySummary from './DailySummary';
+import CravingTimer from './CravingTimer';
+
+interface DashboardProps {
+  user: UserProfile;
+  language: Language;
+  onShowPaywall: () => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ user, language, onShowPaywall }) => {
+  const [now, setNow] = useState(new Date());
+  const [showDailySummary, setShowDailySummary] = useState(false);
+  const [showCravingTimer, setShowCravingTimer] = useState(false);
+  const t = TRANSLATIONS[language].dashboard;
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const quitDate = new Date(user.quitDate);
+  const diffMs = now.getTime() - quitDate.getTime();
+  
+  // Time calculations
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  // Stats calculations
+  const cigarettesAvoided = Math.floor((diffMs / (1000 * 60 * 60 * 24)) * user.cigarettesPerDay);
+  const moneySaved = ((cigarettesAvoided / user.cigarettesPerPack) * user.costPerPack).toFixed(2);
+  const lifeRegainedMinutes = cigarettesAvoided * 11; // Approx 11 mins gained per cigarette not smoked
+  const lifeRegainedHours = (lifeRegainedMinutes / 60).toFixed(1);
+
+  return (
+    <div className="space-y-6 pb-24">
+      {/* Hero Time Counter */}
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-3xl p-6 text-white shadow-lg shadow-emerald-200 relative overflow-hidden">
+        {user.isPro && (
+             <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1">
+                <Crown size={12} className="text-amber-300" fill="currentColor" />
+                <span className="text-[10px] font-bold tracking-wide text-white">{t.proBadge}</span>
+             </div>
+        )}
+
+        <h2 className="text-emerald-100 text-sm font-medium uppercase tracking-wider mb-2">{t.smokeFree}</h2>
+        <div className="flex items-baseline space-x-2">
+            <span className="text-6xl font-bold">{days}</span>
+            <span className="text-xl opacity-80">{t.days}</span>
+        </div>
+        <div className="flex space-x-4 mt-2 text-emerald-100 font-medium">
+            <span>{hours} {t.hours}</span>
+            <span>{minutes} {t.mins}</span>
+            <span className="animate-pulse">●</span>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-3">
+        <button 
+            onClick={() => setShowCravingTimer(true)}
+            className="flex-1 bg-rose-50 border border-rose-100 text-rose-600 py-3 rounded-2xl text-sm font-semibold hover:bg-rose-100 transition flex items-center justify-center gap-2 shadow-sm"
+        >
+            <Timer size={18} />
+            {t.cravingTimerBtn}
+        </button>
+        <button 
+            onClick={() => setShowDailySummary(true)}
+            className="flex-1 bg-white border border-slate-200 text-slate-600 py-3 rounded-2xl text-sm font-semibold hover:bg-slate-50 hover:border-emerald-200 hover:text-emerald-700 transition flex items-center justify-center gap-2 shadow-sm"
+        >
+            <Calendar size={18} />
+            {t.dailySummaryBtn}
+        </button>
+      </div>
+
+      {/* Upgrade Banner (Only if not Pro) */}
+      {!user.isPro && (
+        <div 
+            onClick={onShowPaywall}
+            className="bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl p-4 flex items-center justify-between cursor-pointer border border-amber-200 shadow-sm"
+        >
+            <div className="flex items-center gap-3">
+                <div className="bg-amber-400 p-2 rounded-full text-white">
+                    <Crown size={20} fill="currentColor" />
+                </div>
+                <p className="text-xs font-semibold text-amber-900 leading-tight max-w-[180px]">
+                    {t.upgradeBanner}
+                </p>
+            </div>
+            <div className="bg-white px-3 py-1.5 rounded-lg text-xs font-bold text-amber-600 shadow-sm whitespace-nowrap">
+                {t.upgradeButton}
+            </div>
+        </div>
+      )}
+
+      {/* Grid Stats */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Money Saved */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
+            <div className="bg-green-100 p-3 rounded-full mb-3 text-green-600">
+                <DollarSign size={24} />
+            </div>
+            <p className="text-slate-500 text-xs uppercase font-semibold">{t.moneySaved}</p>
+            <p className="text-2xl font-bold text-slate-800 mt-1">{user.currency}{moneySaved}</p>
+        </div>
+
+        {/* Cigarettes Avoided */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
+            <div className="bg-red-100 p-3 rounded-full mb-3 text-red-500">
+                <Wind size={24} />
+            </div>
+            <p className="text-slate-500 text-xs uppercase font-semibold">{t.notSmoked}</p>
+            <p className="text-2xl font-bold text-slate-800 mt-1">{cigarettesAvoided}</p>
+        </div>
+
+         {/* Life Regained */}
+         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center col-span-2">
+            <div className="flex items-center gap-2 mb-2">
+                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                    <Activity size={20} />
+                </div>
+                <p className="text-slate-500 text-xs uppercase font-semibold">{t.lifeRegained}</p>
+            </div>
+            <p className="text-3xl font-bold text-slate-800">{lifeRegainedHours} <span className="text-lg font-normal text-slate-400">{t.lifeRegainedUnit}</span></p>
+            <p className="text-xs text-slate-400 mt-2">{t.lifeRegainedNote}</p>
+        </div>
+      </div>
+
+      {/* Motivational Card */}
+      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-start gap-3">
+        <Leaf className="text-emerald-500 flex-shrink-0 mt-1" size={20} />
+        <div>
+            <h4 className="font-semibold text-emerald-800 text-sm">{t.healingTitle}</h4>
+            <p className="text-emerald-700 text-xs mt-1 leading-relaxed">
+                {t.healingBody}
+            </p>
+        </div>
+      </div>
+      
+      {/* Modals */}
+      {showDailySummary && (
+        <DailySummary user={user} language={language} onClose={() => setShowDailySummary(false)} />
+      )}
+      {showCravingTimer && (
+        <CravingTimer language={language} onClose={() => setShowCravingTimer(false)} />
+      )}
+    </div>
+  );
+};
+
+export default Dashboard;
