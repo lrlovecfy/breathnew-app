@@ -13,6 +13,7 @@ export interface UserProfile {
   cigarettesPerPack: number;
   currency: string;
   isPro: boolean; // Monetization status
+  cravingsResisted: number;
 }
 
 export interface ChatMessage {
@@ -34,5 +35,5 @@ export interface Achievement {
   title: LocalizedContent;
   icon: string;
   description: LocalizedContent;
-  condition: (days: number) => boolean;
+  condition: (user: UserProfile) => boolean;
 }

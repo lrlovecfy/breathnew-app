@@ -1,20 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { UserProfile, Language } from '../types';
-import { Leaf, DollarSign, Activity, Wind, Crown, ArrowRight, Calendar, Timer } from 'lucide-react';
+import { Leaf, DollarSign, Activity, Wind, Crown, ArrowRight, Calendar, Timer, Trophy } from 'lucide-react';
 import { TRANSLATIONS } from '../translations';
 import DailySummary from './DailySummary';
 import CravingTimer from './CravingTimer';
+import AchievementsModal from './AchievementsModal';
 
 interface DashboardProps {
   user: UserProfile;
   language: Language;
   onShowPaywall: () => void;
+  onUpdateProfile: (data: Partial<UserProfile>) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, language, onShowPaywall }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, language, onShowPaywall, onUpdateProfile }) => {
   const [now, setNow] = useState(new Date());
   const [showDailySummary, setShowDailySummary] = useState(false);
   const [showCravingTimer, setShowCravingTimer] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
   const t = TRANSLATIONS[language].dashboard;
 
   useEffect(() => {
@@ -60,20 +63,27 @@ const Dashboard: React.FC<DashboardProps> = ({ user, language, onShowPaywall }) 
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-3">
+      <div className="grid grid-cols-3 gap-2">
         <button 
             onClick={() => setShowCravingTimer(true)}
-            className="flex-1 bg-rose-50 border border-rose-100 text-rose-600 py-3 rounded-2xl text-sm font-semibold hover:bg-rose-100 transition flex items-center justify-center gap-2 shadow-sm"
+            className="bg-rose-50 border border-rose-100 text-rose-600 py-3 rounded-2xl text-xs font-semibold hover:bg-rose-100 transition flex flex-col items-center justify-center gap-1 shadow-sm"
         >
             <Timer size={18} />
             {t.cravingTimerBtn}
         </button>
         <button 
             onClick={() => setShowDailySummary(true)}
-            className="flex-1 bg-white border border-slate-200 text-slate-600 py-3 rounded-2xl text-sm font-semibold hover:bg-slate-50 hover:border-emerald-200 hover:text-emerald-700 transition flex items-center justify-center gap-2 shadow-sm"
+            className="bg-white border border-slate-200 text-slate-600 py-3 rounded-2xl text-xs font-semibold hover:bg-slate-50 hover:border-emerald-200 hover:text-emerald-700 transition flex flex-col items-center justify-center gap-1 shadow-sm"
         >
             <Calendar size={18} />
             {t.dailySummaryBtn}
+        </button>
+        <button 
+            onClick={() => setShowAchievements(true)}
+            className="bg-amber-50 border border-amber-100 text-amber-700 py-3 rounded-2xl text-xs font-semibold hover:bg-amber-100 transition flex flex-col items-center justify-center gap-1 shadow-sm"
+        >
+            <Trophy size={18} />
+            {t.achievementsBtn}
         </button>
       </div>
 
@@ -146,7 +156,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user, language, onShowPaywall }) 
         <DailySummary user={user} language={language} onClose={() => setShowDailySummary(false)} />
       )}
       {showCravingTimer && (
-        <CravingTimer language={language} onClose={() => setShowCravingTimer(false)} />
+        <CravingTimer 
+            language={language} 
+            onClose={() => setShowCravingTimer(false)}
+            onUpdateProfile={onUpdateProfile}
+            currentCravingsResisted={user.cravingsResisted || 0}
+        />
+      )}
+      {showAchievements && (
+        <AchievementsModal user={user} language={language} onClose={() => setShowAchievements(false)} />
       )}
     </div>
   );

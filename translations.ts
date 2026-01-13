@@ -7,6 +7,17 @@ export const TRANSLATIONS = {
       reset: "Reset",
       resetConfirm: "Are you sure you want to reset all data? This cannot be undone."
     },
+    settings: {
+        title: "Settings",
+        profile: "Profile Settings",
+        edit: "Edit",
+        save: "Save Changes",
+        cancel: "Cancel",
+        name: "Name",
+        cigs: "Cigs/Day",
+        cost: "Cost/Pack",
+        currency: "Currency"
+    },
     onboarding: {
       welcome: "Welcome to BreathNew",
       subtitle: "Your journey to a smoke-free life starts here.",
@@ -37,7 +48,14 @@ export const TRANSLATIONS = {
       upgradeButton: "Upgrade",
       proBadge: "PRO MEMBER",
       dailySummaryBtn: "View Daily Summary",
-      cravingTimerBtn: "Craving Timer"
+      cravingTimerBtn: "Craving Timer",
+      achievementsBtn: "Achievements"
+    },
+    achievements: {
+        title: "Achievements",
+        subtitle: "Badges earned on your journey",
+        locked: "Locked",
+        earnedOn: "Earned"
     },
     dailySummary: {
         title: "Daily Summary",
@@ -59,6 +77,8 @@ export const TRANSLATIONS = {
       giveUp: "Stop Timer",
       newTip: "Get another tip",
       addTip: "Add your own tip",
+      manageTips: "My Tips",
+      emptyTips: "No custom tips yet.",
       save: "Save",
       cancel: "Cancel",
       tipPlaceholder: "Write your tip...",
@@ -97,14 +117,28 @@ export const TRANSLATIONS = {
     },
     paywall: {
         title: "Go BreathNew PRO",
-        subtitle: "Maximize your success rate with premium features.",
+        subtitle: "Join 10,000+ others who quit successfully.",
         feature1: "Unlimited AI Coach Access",
         feature2: "Full Health Recovery Timeline",
         feature3: "Advanced Statistics & Insights",
-        price: "$4.99 / Month",
+        monthly: "Monthly",
+        yearly: "Yearly",
+        priceMonthly: "$4.99",
+        priceYearly: "$29.99",
+        originalPriceMonthly: "$9.99",
+        originalPriceYearly: "$59.99",
+        perMonth: "/mo",
+        save: "SAVE 50%",
+        secure: "Secured by Stripe",
+        cancelAnytime: "Cancel anytime in settings",
         restore: "Restore Purchase",
-        cta: "Upgrade Now",
-        cancel: "No thanks"
+        cta: "Start 7-Day Free Trial",
+        terms: "Terms of Service",
+        privacy: "Privacy Policy",
+        selectMethod: "Payment Method",
+        card: "Credit Card",
+        alipay: "Alipay",
+        wechat: "WeChat Pay"
     }
   },
   zh: {
@@ -112,6 +146,17 @@ export const TRANSLATIONS = {
       name: "BreathNew",
       reset: "重置",
       resetConfirm: "您确定要重置所有数据吗？此操作无法撤销。"
+    },
+    settings: {
+        title: "设置",
+        profile: "个人资料",
+        edit: "编辑",
+        save: "保存更改",
+        cancel: "取消",
+        name: "昵称",
+        cigs: "每日烟量",
+        cost: "每包价格",
+        currency: "货币单位"
     },
     onboarding: {
       welcome: "欢迎来到 BreathNew",
@@ -143,7 +188,14 @@ export const TRANSLATIONS = {
       upgradeButton: "升级",
       proBadge: "PRO 会员",
       dailySummaryBtn: "查看今日总结",
-      cravingTimerBtn: "烟瘾计时器"
+      cravingTimerBtn: "烟瘾计时器",
+      achievementsBtn: "成就徽章"
+    },
+    achievements: {
+        title: "成就",
+        subtitle: "你的戒烟里程碑",
+        locked: "未解锁",
+        earnedOn: "已获得"
     },
     dailySummary: {
         title: "每日总结",
@@ -165,6 +217,8 @@ export const TRANSLATIONS = {
       giveUp: "停止计时",
       newTip: "换一个建议",
       addTip: "添加自定义建议",
+      manageTips: "我的建议",
+      emptyTips: "暂无自定义建议。",
       save: "保存",
       cancel: "取消",
       tipPlaceholder: "输入你的建议...",
@@ -203,14 +257,28 @@ export const TRANSLATIONS = {
     },
     paywall: {
         title: "升级 BreathNew PRO",
-        subtitle: "使用高级功能最大化您的戒烟成功率。",
+        subtitle: "加入 10,000+ 成功戒烟者的行列。",
         feature1: "无限次 AI 教练对话",
         feature2: "完整健康康复时间轴",
         feature3: "高级统计数据与洞察",
-        price: "¥28.00 / 月",
+        monthly: "包月",
+        yearly: "包年",
+        priceMonthly: "¥28.00",
+        priceYearly: "¥168.00",
+        originalPriceMonthly: "¥58.00",
+        originalPriceYearly: "¥336.00",
+        perMonth: "/月",
+        save: "立省 50%",
+        secure: "Stripe 安全支付",
+        cancelAnytime: "随时在设置中取消",
         restore: "恢复购买",
-        cta: "立即升级",
-        cancel: "暂不需要"
+        cta: "开始 7 天免费试用",
+        terms: "服务条款",
+        privacy: "隐私政策",
+        selectMethod: "支付方式",
+        card: "银行卡",
+        alipay: "支付宝",
+        wechat: "微信支付"
     }
   }
 } as const;

@@ -1,4 +1,20 @@
-import { HealthMilestone, Achievement } from './types';
+import { HealthMilestone, Achievement, UserProfile } from './types';
+
+// ==========================================
+// 💰 MONETIZATION CONFIGURATION (变现配置)
+// ==========================================
+export const PAYMENT_CONFIG = {
+  // 赚钱步骤:
+  // 1. 去 https://dashboard.stripe.com/payment-links 创建支付链接
+  // 2. 确保在 Stripe 设置中将 "After payment" 跳转 URL 设置为: https://your-domain.com/?payment_success=true
+  // 3. 将生成的链接填入下方。
+  
+  // 如果保留为空字符串 ""，App 将运行在演示模式（点击支付直接成功，用于测试）。
+  // 如果填入 URL，用户点击升级时会跳转到 Stripe 真实支付页面。
+  
+  monthlyUrl: "", // 示例: "https://buy.stripe.com/test_a1b2c3d4..."
+  yearlyUrl: "",  // 示例: "https://buy.stripe.com/test_e5f6g7h8..."
+};
 
 export const HEALTH_MILESTONES: HealthMilestone[] = [
   {
@@ -45,33 +61,72 @@ export const HEALTH_MILESTONES: HealthMilestone[] = [
   },
 ];
 
+// Helper to calculate stats
+const getStats = (user: UserProfile) => {
+    const now = new Date();
+    const quitDate = new Date(user.quitDate);
+    const diffMs = now.getTime() - quitDate.getTime();
+    const days = diffMs / (1000 * 60 * 60 * 24);
+    const cigarettesAvoided = days * user.cigarettesPerDay;
+    const moneySaved = (cigarettesAvoided / user.cigarettesPerPack) * user.costPerPack;
+    return { days, moneySaved };
+};
+
 export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'day1',
     title: { en: 'First Step', zh: '第一步' },
     icon: '🌱',
     description: { en: 'Completed your first 24 hours smoke-free.', zh: '完成了第一个 24 小时无烟挑战。' },
-    condition: (days) => days >= 1,
+    condition: (user) => getStats(user).days >= 1,
+  },
+  {
+    id: 'day3',
+    title: { en: 'Determined', zh: '坚定不移' },
+    icon: '🔥',
+    description: { en: '3 days smoke-free. The nicotine is leaving your body.', zh: '3天无烟。尼古丁正在离开你的身体。' },
+    condition: (user) => getStats(user).days >= 3,
   },
   {
     id: 'week1',
     title: { en: 'Week Warrior', zh: '周战士' },
     icon: '🛡️',
     description: { en: 'One full week without a cigarette.', zh: '整整一周没有吸烟。' },
-    condition: (days) => days >= 7,
+    condition: (user) => getStats(user).days >= 7,
   },
   {
     id: 'month1',
     title: { en: 'Fresh Air', zh: '清新空气' },
     icon: '🌬️',
     description: { en: 'One month of clean lungs.', zh: '一个月的肺部清洁。' },
-    condition: (days) => days >= 30,
+    condition: (user) => getStats(user).days >= 30,
   },
   {
-    id: 'savings',
-    title: { en: 'Money Maker', zh: '省钱达人' },
+    id: 'savings_small',
+    title: { en: 'Pocket Money', zh: '零花钱' },
+    icon: '🐷',
+    description: { en: 'Saved your first 50 in currency.', zh: '节省了你的前 50 元。' },
+    condition: (user) => getStats(user).moneySaved >= 50,
+  },
+  {
+    id: 'savings_big',
+    title: { en: 'Wealth Builder', zh: '财富积累' },
     icon: '💰',
-    description: { en: 'You are saving significant money now.', zh: '您现在已经节省了一大笔钱。' },
-    condition: (days) => days >= 14,
+    description: { en: 'Saved over 500 in currency.', zh: '节省了超过 500 元。' },
+    condition: (user) => getStats(user).moneySaved >= 500,
+  },
+  {
+    id: 'craving1',
+    title: { en: 'Craving Crusher', zh: '欲望粉碎者' },
+    icon: '🥊',
+    description: { en: 'Successfully managed 1 craving with the timer.', zh: '使用计时器成功抵御了1次烟瘾。' },
+    condition: (user) => (user.cravingsResisted || 0) >= 1,
+  },
+  {
+    id: 'craving10',
+    title: { en: 'Zen Master', zh: '禅修大师' },
+    icon: '🧘',
+    description: { en: 'Successfully managed 10 cravings.', zh: '成功抵御了10次烟瘾。' },
+    condition: (user) => (user.cravingsResisted || 0) >= 10,
   }
 ];

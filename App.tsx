@@ -24,11 +24,32 @@ const App: React.FC = () => {
     const savedLang = localStorage.getItem('breathnew_lang') as Language;
     
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      // Ensure new fields exist for backward compatibility
+      if (parsedUser.cravingsResisted === undefined) {
+          parsedUser.cravingsResisted = 0;
+      }
+      setUser(parsedUser);
     }
     if (savedLang) {
       setLanguage(savedLang);
     }
+
+    // CHECK FOR PAYMENT SUCCESS
+    // If you use Stripe Payment Links, set the redirect URL to https://yourapp.com/?payment_success=true
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment_success') === 'true' && savedUser) {
+        const currentUser = JSON.parse(savedUser);
+        if (!currentUser.isPro) {
+            const upgradedUser = { ...currentUser, isPro: true };
+            setUser(upgradedUser);
+            localStorage.setItem('breathnew_user', JSON.stringify(upgradedUser));
+            alert("Payment Successful! You are now a Pro member.");
+            // Clean URL
+            window.history.replaceState({}, document.title, "/");
+        }
+    }
+
   }, []);
 
   useEffect(() => {
@@ -45,8 +66,9 @@ const App: React.FC = () => {
   };
 
   const handleOnboardingComplete = (profile: UserProfile) => {
-    setUser(profile);
-    localStorage.setItem('breathnew_user', JSON.stringify(profile));
+    const profileWithDefaults = { ...profile, cravingsResisted: 0 };
+    setUser(profileWithDefaults);
+    localStorage.setItem('breathnew_user', JSON.stringify(profileWithDefaults));
   };
 
   const handleReset = () => {
@@ -64,7 +86,7 @@ const App: React.FC = () => {
       setUser(upgradedUser);
       localStorage.setItem('breathnew_user', JSON.stringify(upgradedUser));
       setShowPaywall(false);
-      alert(language === 'zh' ? "升级成功！感谢您的支持。" : "Upgrade successful! Thank you for your support.");
+      // alert(language === 'zh' ? "升级成功！感谢您的支持。" : "Upgrade successful! Thank you for your support.");
   }
 
   const handleCancelSubscription = () => {
@@ -76,6 +98,13 @@ const App: React.FC = () => {
           setShowSettings(false);
       }
   }
+
+  const handleUpdateProfile = (updatedFields: Partial<UserProfile>) => {
+    if (!user) return;
+    const updatedUser = { ...user, ...updatedFields };
+    setUser(updatedUser);
+    localStorage.setItem('breathnew_user', JSON.stringify(updatedUser));
+  };
 
   if (!user) {
     return (
@@ -113,6 +142,7 @@ const App: React.FC = () => {
                 setShowPaywall(true);
             }}
             onCancelSubscription={handleCancelSubscription}
+            onUpdateProfile={handleUpdateProfile}
           />
       )}
 
@@ -160,6 +190,7 @@ const App: React.FC = () => {
                     user={user} 
                     language={language} 
                     onShowPaywall={() => setShowPaywall(true)} 
+                    onUpdateProfile={handleUpdateProfile}
                 />
             )}
             {activeTab === 'health' && (

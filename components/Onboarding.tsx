@@ -26,7 +26,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, language, onToggleL
       costPerPack: parseFloat(cost) || 10,
       cigarettesPerPack: 20,
       currency,
-      isPro: isPro
+      isPro: isPro,
+      cravingsResisted: 0
     };
     onComplete(profile);
   };

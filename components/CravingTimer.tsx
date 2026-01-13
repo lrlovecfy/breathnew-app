@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Language } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { Language, UserProfile } from '../types';
 import { TRANSLATIONS } from '../translations';
 import { generateSpeech } from '../services/geminiService';
-import { X, Trophy, Lightbulb, RefreshCw, Plus, Save, Volume2, Loader2 } from 'lucide-react';
+import { X, Trophy, Lightbulb, RefreshCw, Plus, Save, Volume2, Loader2, List, Pencil, Trash2 } from 'lucide-react';
 
 interface CravingTimerProps {
   language: Language;
   onClose: () => void;
+  onUpdateProfile?: (data: Partial<UserProfile>) => void;
+  currentCravingsResisted?: number;
 }
 
 const TIPS = {
@@ -36,18 +38,25 @@ const TIPS = {
     ]
 };
 
-const CravingTimer: React.FC<CravingTimerProps> = ({ language, onClose }) => {
+const CravingTimer: React.FC<CravingTimerProps> = ({ language, onClose, onUpdateProfile, currentCravingsResisted = 0 }) => {
   const t = TRANSLATIONS[language].cravingTimer;
   const [secondsLeft, setSecondsLeft] = useState(300); // 5 minutes
   const [isActive, setIsActive] = useState(true);
   const [tip, setTip] = useState('');
+  
+  // Adding/Managing State
   const [isAddingTip, setIsAddingTip] = useState(false);
   const [newTipInput, setNewTipInput] = useState('');
+  const [isManagingTips, setIsManagingTips] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editTipText, setEditTipText] = useState('');
   
   // Audio state
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   
+  const hasIncrementedRef = useRef(false);
+
   // Load custom tips from local storage
   const [customTips, setCustomTips] = useState<string[]>(() => {
     try {
@@ -82,6 +91,16 @@ const CravingTimer: React.FC<CravingTimerProps> = ({ language, onClose }) => {
     return () => clearInterval(interval);
   }, [isActive]);
 
+  // Handle success - only once per session
+  useEffect(() => {
+      if (!isActive && secondsLeft === 0 && !hasIncrementedRef.current) {
+          hasIncrementedRef.current = true;
+          if (onUpdateProfile) {
+              onUpdateProfile({ cravingsResisted: currentCravingsResisted + 1 });
+          }
+      }
+  }, [isActive, secondsLeft, onUpdateProfile, currentCravingsResisted]);
+
   const handleNewTip = () => {
       const tipsList = getAllTips();
       if (tipsList.length <= 1) return;
@@ -107,6 +126,50 @@ const CravingTimer: React.FC<CravingTimerProps> = ({ language, onClose }) => {
     setTip(newTipInput.trim());
     setNewTipInput('');
     setIsAddingTip(false);
+  };
+
+  const handleDeleteTip = (indexToDelete: number) => {
+      const tipToDelete = customTips[indexToDelete];
+      const updatedTips = customTips.filter((_, i) => i !== indexToDelete);
+      setCustomTips(updatedTips);
+      localStorage.setItem('breathnew_custom_tips', JSON.stringify(updatedTips));
+      
+      // If the currently displayed tip was the deleted one, get a new random one
+      if (tip === tipToDelete) {
+           const allTips = [...TIPS[language], ...updatedTips];
+           let newTip = tip;
+           if (allTips.length > 0) {
+               let attempts = 0;
+               // Try to pick a new tip that isn't the deleted one
+               do {
+                   newTip = allTips[Math.floor(Math.random() * allTips.length)];
+                   attempts++;
+               } while (newTip === tip && attempts < 5 && allTips.length > 1);
+           }
+           setTip(newTip);
+           setIsPlayingAudio(false);
+      }
+  };
+
+  const startEditing = (index: number) => {
+      setEditingIndex(index);
+      setEditTipText(customTips[index]);
+  };
+
+  const saveEdit = (index: number) => {
+      if (!editTipText.trim()) return;
+      const updatedTips = [...customTips];
+      updatedTips[index] = editTipText.trim();
+      setCustomTips(updatedTips);
+      localStorage.setItem('breathnew_custom_tips', JSON.stringify(updatedTips));
+      
+      // If currently displayed tip was edited, update it
+      if (tip === customTips[index]) {
+          setTip(editTipText.trim());
+      }
+      
+      setEditingIndex(null);
+      setEditTipText('');
   };
 
   // Helper function to decode base64 string
@@ -144,7 +207,6 @@ const CravingTimer: React.FC<CravingTimerProps> = ({ language, onClose }) => {
         source.connect(audioContext.destination);
         source.onended = () => {
             setIsPlayingAudio(false);
-            // Optional: Close context to free resources
             audioContext.close();
         };
         source.start();
@@ -203,79 +265,144 @@ const CravingTimer: React.FC<CravingTimerProps> = ({ language, onClose }) => {
         )}
 
         {isFinished ? (
-            // Success Screen
-            <div className="bg-white rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-300">
-                <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-600">
-                    <Trophy size={40} />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-800 mb-2">{t.successTitle}</h2>
-                <p className="text-slate-500 text-sm mb-6">{t.successSubtitle}</p>
-                
-                <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl mb-4 flex items-start gap-3 text-left relative">
-                    <Lightbulb className="text-emerald-500 shrink-0 mt-0.5" size={20} />
-                    <p className="text-emerald-800 font-medium text-sm leading-relaxed flex-1">{tip}</p>
+            isManagingTips ? (
+                // Management Screen
+                <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-h-[70vh] flex flex-col animate-in zoom-in duration-300">
+                    <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                         <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                             <List size={20} className="text-emerald-500"/>
+                             {t.manageTips}
+                         </h3>
+                         <button onClick={() => setIsManagingTips(false)} className="p-2 bg-slate-50 rounded-full hover:bg-slate-100 transition">
+                            <X size={18} />
+                         </button>
+                    </div>
+                    
+                    <div className="overflow-y-auto flex-1 space-y-3 mb-4 pr-1 text-left custom-scrollbar">
+                         {customTips.length === 0 && (
+                             <div className="text-center py-10 px-4 border-2 border-dashed border-slate-100 rounded-2xl">
+                                 <p className="text-slate-400 text-sm">{t.emptyTips}</p>
+                             </div>
+                         )}
+                         {customTips.map((ct, idx) => (
+                             <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex gap-2 items-start group">
+                                 {editingIndex === idx ? (
+                                     <div className="flex-1 flex gap-2 flex-col">
+                                         <input 
+                                            value={editTipText} 
+                                            onChange={e => setEditTipText(e.target.value)}
+                                            className="w-full text-sm p-2 rounded-lg border border-emerald-200 ring-2 ring-emerald-50 outline-none" 
+                                            autoFocus
+                                         />
+                                         <div className="flex gap-2 justify-end">
+                                             <button onClick={() => setEditingIndex(null)} className="text-xs text-slate-500 font-medium px-2 py-1 hover:bg-slate-200 rounded">{t.cancel}</button>
+                                             <button onClick={() => saveEdit(idx)} className="text-xs bg-emerald-600 text-white px-3 py-1 rounded-lg font-medium hover:bg-emerald-700">{t.save}</button>
+                                         </div>
+                                     </div>
+                                 ) : (
+                                     <>
+                                        <p className="text-sm text-slate-700 flex-1 leading-relaxed">{ct}</p>
+                                        <div className="flex gap-1 shrink-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => startEditing(idx)} className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"><Pencil size={14} /></button>
+                                            <button onClick={() => handleDeleteTip(idx)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><Trash2 size={14} /></button>
+                                        </div>
+                                     </>
+                                 )}
+                             </div>
+                         ))}
+                    </div>
+
                     <button 
-                        onClick={handlePlayAudio}
-                        disabled={isLoadingAudio || isPlayingAudio}
-                        className="text-emerald-600 hover:text-emerald-700 disabled:opacity-50 p-2 bg-white rounded-full shadow-sm flex-shrink-0 transition-all active:scale-95"
-                        title={t.playTip}
+                        onClick={() => {
+                            setIsManagingTips(false);
+                            setIsAddingTip(true);
+                        }} 
+                        className="w-full py-3 bg-emerald-50 text-emerald-700 font-semibold rounded-xl hover:bg-emerald-100 transition flex items-center justify-center gap-2 flex-shrink-0"
                     >
-                        {isLoadingAudio ? <Loader2 size={16} className="animate-spin" /> : 
-                         isPlayingAudio ? <Volume2 size={16} className="animate-pulse text-emerald-500" /> : 
-                         <Volume2 size={16} />}
+                        <Plus size={18} /> {t.addTip}
                     </button>
                 </div>
+            ) : (
+                // Success Screen
+                <div className="bg-white rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-300">
+                    <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-600">
+                        <Trophy size={40} />
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-800 mb-2">{t.successTitle}</h2>
+                    <p className="text-slate-500 text-sm mb-6">{t.successSubtitle}</p>
+                    
+                    <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl mb-4 flex items-start gap-3 text-left relative group">
+                        <Lightbulb className="text-emerald-500 shrink-0 mt-0.5" size={20} />
+                        <p className="text-emerald-800 font-medium text-sm leading-relaxed flex-1">{tip}</p>
+                        <button 
+                            onClick={handlePlayAudio}
+                            disabled={isLoadingAudio || isPlayingAudio}
+                            className="text-emerald-600 hover:text-emerald-700 disabled:opacity-50 p-2 bg-white rounded-full shadow-sm flex-shrink-0 transition-all active:scale-95"
+                            title={t.playTip}
+                        >
+                            {isLoadingAudio ? <Loader2 size={16} className="animate-spin" /> : 
+                            isPlayingAudio ? <Volume2 size={16} className="animate-pulse text-emerald-500" /> : 
+                            <Volume2 size={16} />}
+                        </button>
+                    </div>
 
-                {isAddingTip ? (
-                    <div className="mb-6 fade-in">
-                        <input 
-                            type="text"
-                            value={newTipInput}
-                            onChange={(e) => setNewTipInput(e.target.value)}
-                            placeholder={t.tipPlaceholder}
-                            className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm mb-2 focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                            autoFocus
-                        />
-                        <div className="flex gap-2">
+                    {isAddingTip ? (
+                        <div className="mb-6 fade-in">
+                            <input 
+                                type="text"
+                                value={newTipInput}
+                                onChange={(e) => setNewTipInput(e.target.value)}
+                                placeholder={t.tipPlaceholder}
+                                className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm mb-2 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                                autoFocus
+                            />
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => setIsAddingTip(false)}
+                                    className="flex-1 py-2 text-slate-500 text-xs font-medium hover:bg-slate-50 rounded-lg transition"
+                                >
+                                    {t.cancel}
+                                </button>
+                                <button 
+                                    onClick={handleSaveCustomTip}
+                                    disabled={!newTipInput.trim()}
+                                    className="flex-1 bg-emerald-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 transition disabled:opacity-50"
+                                >
+                                    {t.save}
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex gap-2 justify-center mb-6">
                             <button 
-                                onClick={() => setIsAddingTip(false)}
-                                className="flex-1 py-2 text-slate-500 text-xs font-medium hover:bg-slate-50 rounded-lg transition"
+                                onClick={handleNewTip}
+                                className="text-emerald-600 text-xs font-bold hover:text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-full transition inline-flex items-center gap-1.5"
                             >
-                                {t.cancel}
+                                <RefreshCw size={12} /> {t.newTip}
                             </button>
                             <button 
-                                onClick={handleSaveCustomTip}
-                                disabled={!newTipInput.trim()}
-                                className="flex-1 bg-emerald-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 transition disabled:opacity-50"
+                                onClick={() => setIsAddingTip(true)}
+                                className="text-slate-400 text-xs font-medium hover:text-slate-600 hover:bg-slate-50 px-3 py-1.5 rounded-full transition inline-flex items-center gap-1.5"
                             >
-                                {t.save}
+                                <Plus size={12} /> {t.addTip}
+                            </button>
+                            <button 
+                                onClick={() => setIsManagingTips(true)}
+                                className="text-slate-400 text-xs font-medium hover:text-slate-600 hover:bg-slate-50 px-3 py-1.5 rounded-full transition inline-flex items-center gap-1.5"
+                            >
+                                <List size={12} /> {t.manageTips}
                             </button>
                         </div>
-                    </div>
-                ) : (
-                    <div className="flex gap-2 justify-center mb-6">
-                        <button 
-                            onClick={handleNewTip}
-                            className="text-emerald-600 text-xs font-bold hover:text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-full transition inline-flex items-center gap-1.5"
-                        >
-                            <RefreshCw size={12} /> {t.newTip}
-                        </button>
-                         <button 
-                            onClick={() => setIsAddingTip(true)}
-                            className="text-slate-400 text-xs font-medium hover:text-slate-600 hover:bg-slate-50 px-3 py-1.5 rounded-full transition inline-flex items-center gap-1.5"
-                        >
-                            <Plus size={12} /> {t.addTip}
-                        </button>
-                    </div>
-                )}
+                    )}
 
-                <button 
-                    onClick={onClose}
-                    className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition shadow-lg"
-                >
-                    {t.close}
-                </button>
-            </div>
+                    <button 
+                        onClick={onClose}
+                        className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition shadow-lg"
+                    >
+                        {t.close}
+                    </button>
+                </div>
+            )
         ) : (
             // Timer Screen
             <div className="flex flex-col items-center">
