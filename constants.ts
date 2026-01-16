@@ -9,11 +9,11 @@ export const PAYMENT_CONFIG = {
   // 2. 确保在 Stripe 设置中将 "After payment" 跳转 URL 设置为: https://your-domain.com/?payment_success=true
   // 3. 将生成的链接填入下方。
   
-  // 如果保留为空字符串 ""，App 将运行在演示模式（点击支付直接成功，用于测试）。
-  // 如果填入 URL，用户点击升级时会跳转到 Stripe 真实支付页面。
+  // 示例链接 (这是测试链接，正式上线请替换为你自己的 Stripe 链接):
+  // 如果你还没有 Stripe，保留为空字符串 ""，App 将运行在演示模式（点击支付直接成功）。
   
-  monthlyUrl: "", // 示例: "https://buy.stripe.com/test_a1b2c3d4..."
-  yearlyUrl: "",  // 示例: "https://buy.stripe.com/test_e5f6g7h8..."
+  monthlyUrl: "", // 在这里填入月付链接 e.g. "https://buy.stripe.com/..."
+  yearlyUrl: "",  // 在这里填入年付链接 e.g. "https://buy.stripe.com/..."
 };
 
 export const HEALTH_MILESTONES: HealthMilestone[] = [
