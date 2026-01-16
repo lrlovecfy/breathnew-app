@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>('en');
   const [showPaywall, setShowPaywall] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
     // Load user and language preference
@@ -26,17 +27,35 @@ const App: React.FC = () => {
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
       // Ensure new fields exist for backward compatibility
-      if (parsedUser.cravingsResisted === undefined) {
-          parsedUser.cravingsResisted = 0;
-      }
+      if (parsedUser.cravingsResisted === undefined) parsedUser.cravingsResisted = 0;
+      if (parsedUser.notificationsEnabled === undefined) parsedUser.notificationsEnabled = false;
+      if (parsedUser.notificationFrequency === undefined) parsedUser.notificationFrequency = 'daily';
+      
       setUser(parsedUser);
+      checkAndTriggerNotification(parsedUser, savedLang || 'en');
     }
     if (savedLang) {
       setLanguage(savedLang);
     }
 
+    // Load Theme Preference
+    const savedTheme = localStorage.getItem('breathnew_theme') as 'light' | 'dark';
+    if (savedTheme) {
+        setTheme(savedTheme);
+        if (savedTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    } else {
+        // Optional: Check system preference
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            setTheme('dark');
+            document.documentElement.classList.add('dark');
+        }
+    }
+
     // CHECK FOR PAYMENT SUCCESS
-    // If you use Stripe Payment Links, set the redirect URL to https://yourapp.com/?payment_success=true
     const params = new URLSearchParams(window.location.search);
     if (params.get('payment_success') === 'true' && savedUser) {
         const currentUser = JSON.parse(savedUser);
@@ -52,6 +71,43 @@ const App: React.FC = () => {
 
   }, []);
 
+  const checkAndTriggerNotification = (currentUser: UserProfile, currentLang: Language) => {
+    if (!currentUser.notificationsEnabled) return;
+    if (Notification.permission !== 'granted') return;
+
+    const lastNotif = currentUser.lastNotificationDate ? new Date(currentUser.lastNotificationDate).getTime() : 0;
+    const now = new Date().getTime();
+    
+    // Threshold in milliseconds
+    const dayMs = 24 * 60 * 60 * 1000;
+    const threshold = currentUser.notificationFrequency === 'daily' ? dayMs : dayMs * 7;
+
+    if (now - lastNotif > threshold) {
+        // Calculate Streak
+        const quitDate = new Date(currentUser.quitDate).getTime();
+        const daysSmokeFree = Math.floor((now - quitDate) / dayMs);
+        
+        const title = currentLang === 'zh' ? "保持坚强！" : "Keep going strong!";
+        const body = currentLang === 'zh' 
+            ? `您已经戒烟 ${daysSmokeFree} 天了！继续保持！`
+            : `You have been smoke-free for ${daysSmokeFree} days! Keep it up!`;
+
+        try {
+            new Notification(title, {
+                body: body,
+                icon: '/icon.svg'
+            });
+
+            // Update user profile
+            const updatedUser = { ...currentUser, lastNotificationDate: new Date().toISOString() };
+            setUser(updatedUser);
+            localStorage.setItem('breathnew_user', JSON.stringify(updatedUser));
+        } catch (e) {
+            console.error("Failed to send notification", e);
+        }
+    }
+  };
+
   useEffect(() => {
     // Fetch motivation when user is loaded or language changes
     if (user) {
@@ -65,8 +121,24 @@ const App: React.FC = () => {
       localStorage.setItem('breathnew_lang', newLang);
   };
 
+  const toggleTheme = () => {
+      const newTheme = theme === 'light' ? 'dark' : 'light';
+      setTheme(newTheme);
+      localStorage.setItem('breathnew_theme', newTheme);
+      if (newTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+      } else {
+          document.documentElement.classList.remove('dark');
+      }
+  };
+
   const handleOnboardingComplete = (profile: UserProfile) => {
-    const profileWithDefaults = { ...profile, cravingsResisted: 0 };
+    const profileWithDefaults = { 
+        ...profile, 
+        cravingsResisted: 0,
+        notificationsEnabled: false,
+        notificationFrequency: 'daily' as 'daily'
+    };
     setUser(profileWithDefaults);
     localStorage.setItem('breathnew_user', JSON.stringify(profileWithDefaults));
   };
@@ -86,7 +158,6 @@ const App: React.FC = () => {
       setUser(upgradedUser);
       localStorage.setItem('breathnew_user', JSON.stringify(upgradedUser));
       setShowPaywall(false);
-      // alert(language === 'zh' ? "升级成功！感谢您的支持。" : "Upgrade successful! Thank you for your support.");
   }
 
   const handleCancelSubscription = () => {
@@ -119,7 +190,7 @@ const App: React.FC = () => {
   const t = TRANSLATIONS[language];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-emerald-100">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-emerald-100 dark:selection:bg-emerald-900 transition-colors duration-300">
       
       {/* Paywall Overlay */}
       {showPaywall && (
@@ -135,6 +206,8 @@ const App: React.FC = () => {
           <SettingsModal 
             user={user}
             language={language}
+            theme={theme}
+            onToggleTheme={toggleTheme}
             onClose={() => setShowSettings(false)}
             onReset={handleReset}
             onUpgrade={() => {
@@ -147,20 +220,20 @@ const App: React.FC = () => {
       )}
 
       {/* Top Bar */}
-      <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md z-10 border-b border-slate-100 px-4 py-3">
+      <header className="fixed top-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10 border-b border-slate-100 dark:border-slate-800 px-4 py-3 transition-colors duration-300">
         <div className="max-w-md mx-auto flex justify-between items-center">
-            <h1 className="font-bold text-lg text-emerald-800 tracking-tight">{t.app.name}</h1>
+            <h1 className="font-bold text-lg text-emerald-800 dark:text-emerald-400 tracking-tight">{t.app.name}</h1>
             <div className="flex items-center gap-3">
                 <button 
                     onClick={toggleLanguage}
-                    className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-emerald-600 bg-slate-100 px-2 py-1 rounded-full transition"
+                    className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full transition"
                 >
                     <Globe size={12} />
                     {language === 'en' ? 'EN' : '中'}
                 </button>
                 <button 
                     onClick={() => setShowSettings(true)} 
-                    className="text-slate-400 hover:text-emerald-600 transition p-1"
+                    className="text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition p-1"
                 >
                     <UserCircle size={24} />
                 </button>
@@ -173,13 +246,13 @@ const App: React.FC = () => {
         
         {/* Dynamic Greeting */}
         <div className="mb-6">
-            <h2 className="text-2xl font-bold text-slate-800">
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 transition-colors">
                 {activeTab === 'dashboard' && `${t.dashboard.greeting}, ${user.name}`}
                 {activeTab === 'health' && t.timeline.title}
                 {activeTab === 'coach' && t.coach.title}
             </h2>
             {activeTab === 'dashboard' && (
-                <p className="text-slate-500 text-sm mt-1 italic">"{motivation}"</p>
+                <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 italic transition-colors">"{motivation}"</p>
             )}
         </div>
 
@@ -212,11 +285,11 @@ const App: React.FC = () => {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-safe z-20">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-safe z-20 transition-colors duration-300">
         <div className="max-w-md mx-auto flex justify-around items-center px-2 py-3">
             <button 
                 onClick={() => setActiveTab('dashboard')}
-                className={`flex flex-col items-center gap-1 p-2 rounded-xl transition w-20 ${activeTab === 'dashboard' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`flex flex-col items-center gap-1 p-2 rounded-xl transition w-20 ${activeTab === 'dashboard' ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}
             >
                 <LayoutDashboard size={24} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
                 <span className="text-[10px] font-medium">{t.nav.home}</span>
@@ -224,7 +297,7 @@ const App: React.FC = () => {
 
             <button 
                 onClick={() => setActiveTab('health')}
-                className={`flex flex-col items-center gap-1 p-2 rounded-xl transition w-20 ${activeTab === 'health' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`flex flex-col items-center gap-1 p-2 rounded-xl transition w-20 ${activeTab === 'health' ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}
             >
                 <Activity size={24} strokeWidth={activeTab === 'health' ? 2.5 : 2} />
                 <span className="text-[10px] font-medium">{t.nav.health}</span>
@@ -232,7 +305,7 @@ const App: React.FC = () => {
 
             <button 
                 onClick={() => setActiveTab('coach')}
-                className={`flex flex-col items-center gap-1 p-2 rounded-xl transition w-20 ${activeTab === 'coach' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`flex flex-col items-center gap-1 p-2 rounded-xl transition w-20 ${activeTab === 'coach' ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}
             >
                 <MessageCircle size={24} strokeWidth={activeTab === 'coach' ? 2.5 : 2} />
                 <span className="text-[10px] font-medium">{t.nav.coach}</span>
@@ -241,7 +314,7 @@ const App: React.FC = () => {
       </nav>
       
       {/* Safe area padding for mobile */}
-      <div className="h-6 w-full bg-white fixed bottom-0 z-10 hidden md:block"></div>
+      <div className="h-6 w-full bg-white dark:bg-slate-900 fixed bottom-0 z-10 hidden md:block transition-colors"></div>
     </div>
   );
 };

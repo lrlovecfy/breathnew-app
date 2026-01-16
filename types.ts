@@ -14,6 +14,9 @@ export interface UserProfile {
   currency: string;
   isPro: boolean; // Monetization status
   cravingsResisted: number;
+  notificationsEnabled?: boolean;
+  notificationFrequency?: 'daily' | 'weekly';
+  lastNotificationDate?: string; // ISO string
 }
 
 export interface ChatMessage {
